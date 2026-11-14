@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="KaraDesk.Animation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/karadesk_slide_up</item>
+        <item name="android:activityOpenExitAnimation">@anim/karadesk_hold</item>
+        <item name="android:activityCloseEnterAnimation">@anim/karadesk_hold</item>
+        <item name="android:activityCloseExitAnimation">@anim/karadesk_slide_down</item>
+    </style>
+
+    <style name="KaraDesk.Theme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowAnimationStyle">@style/KaraDesk.Animation</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>
