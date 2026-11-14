@@ -30,10 +30,6 @@ android {
     }
 }
 
-kotlin {
-    jvmToolchain(17)
-}
-
 dependencies {
     implementation(project(":karadesk"))
     implementation(libs.androidx.core.ktx)

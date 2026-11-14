@@ -138,10 +138,11 @@ internal fun ChatScreen(store: MessengerStore, router: Router, route: Route.Chat
                     }
 
                     Column {
-                        Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(title, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             if (active) stringResource(R.string.karadesk_active_now) else replyExpectation(boot?.settings?.availability?.replyTime),
                             fontSize = 12.sp,
+                            lineHeight = 15.sp,
                             color = palette.secondaryText,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,

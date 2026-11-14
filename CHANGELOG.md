@@ -2,6 +2,12 @@
 
 All notable changes to the KaraDesk Android SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## 0.1.1
+
+- Your messages now line up on the right edge of the conversation, however short they are.
+- Tighter spacing between the teammate's name and their status or reply time at the top of a conversation.
+- The project builds with Android Studio's bundled JDK.
+
 ## 0.1.0
 
 - The KaraDesk messenger for Android, with the same features as the iOS SDK: a branded home screen with your greeting, logo, team and home cards, conversations with photos and files, satisfaction ratings, and your full help center with search.

@@ -121,9 +121,13 @@ internal fun MessageGroupView(
     val palette = KaraDeskTheme.palette
     val context = LocalContext.current
 
-    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(8.dp, if (group.isMine) Alignment.End else Alignment.Start),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         if (group.isMine) {
-            Spacer(Modifier.weight(1f).widthIn(min = 48.dp))
+            Spacer(Modifier.width(40.dp))
         } else if (group.author.kind == AuthorKind.BOT) {
             BotAvatar(28.dp)
         } else {
