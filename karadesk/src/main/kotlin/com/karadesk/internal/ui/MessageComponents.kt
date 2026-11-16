@@ -6,8 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
@@ -51,6 +50,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karadesk.R
@@ -125,7 +126,43 @@ private fun ButtonsComponent(message: Message, component: MessageComponent.Butto
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WrapRow(spacing: Dp, content: @Composable () -> Unit) {
+    Layout(content = content) { measurables, constraints ->
+        val gap = spacing.roundToPx()
+        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        val positions = ArrayList<IntOffset>(placeables.size)
+        var x = 0
+        var y = 0
+        var rowHeight = 0
+        var width = 0
+
+        placeables.forEach { placeable ->
+            if (x > 0 && x + placeable.width > constraints.maxWidth) {
+                x = 0
+                y += rowHeight + gap
+                rowHeight = 0
+            }
+
+            positions.add(IntOffset(x, y))
+            width = maxOf(width, x + placeable.width)
+            x += placeable.width + gap
+            rowHeight = maxOf(rowHeight, placeable.height)
+        }
+
+        val height = y + rowHeight
+
+        layout(
+            width.coerceIn(constraints.minWidth, constraints.maxWidth),
+            height.coerceIn(constraints.minHeight, constraints.maxHeight),
+        ) {
+            placeables.forEachIndexed { index, placeable ->
+                placeable.place(positions[index])
+            }
+        }
+    }
+}
+
 @Composable
 private fun ButtonList(
     message: Message,
@@ -157,10 +194,7 @@ private fun ButtonList(
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
         if (row) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
+            WrapRow(spacing = 6.dp) {
                 buttons.forEach { button ->
                     ComponentButtonView(button, answeredId, state.pending, Modifier) { press(button) }
                 }

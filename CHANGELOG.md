@@ -2,6 +2,10 @@
 
 All notable changes to the KaraDesk Android SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## 1.1.1
+
+- Fixes a crash when opening a conversation with reply buttons from Kara in apps that use a newer Compose version than the SDK was built with. The buttons now wrap with the SDK's own layout instead of Compose's experimental FlowRow, so they work with every supported Compose version.
+
 ## 1.1.0
 
 - Messages from Kara, KaraDesk's AI agent, show their interactive parts: reply buttons, suggested articles, a single question field (text, email, phone, number or a choice from a list) and cards. Answers are sent to KaraDesk, the chosen button is marked, and errors such as an invalid email address show under the question. Tapping a suggested article opens it in the help center inside the messenger.
