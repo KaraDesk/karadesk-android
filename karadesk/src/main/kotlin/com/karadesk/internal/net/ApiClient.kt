@@ -109,7 +109,7 @@ internal class ApiClient(
 
             override fun onResponse(call: Call, response: Response) {
                 val result = try {
-                    response.use { it.code to it.body.string() }
+                    response.use { it.code to (it.body?.string() ?: "") }
                 } catch (e: IOException) {
                     if (continuation.isActive) {
                         continuation.resumeWithException(networkError(e))

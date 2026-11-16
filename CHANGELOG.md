@@ -2,6 +2,10 @@
 
 All notable changes to the KaraDesk Android SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## 1.0.1
+
+- Works in more apps. The SDK now builds with Android Gradle Plugin 8 and Kotlin 2.0 or later and compileSdk 35 or later, instead of requiring Android Gradle Plugin 9.1, Kotlin 2.4 and compileSdk 37. It depends on the oldest library versions it needs (Compose BOM 2024.12, OkHttp 4.12, Coil 3.0), so your app's newer versions are used when you have them.
+
 ## 1.0.0
 
 - Errors are explained instead of leaving the messenger spinning. Requests fail right away when the device is offline, and every request now has an overall time limit, so sending a message never hangs.

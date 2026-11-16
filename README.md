@@ -11,6 +11,7 @@ Add the [KaraDesk](https://karadesk.com) messenger to your Android app. Your use
 
 - Android 8.0 (API 26) or later
 - Kotlin 2.0 or later
+- Android Gradle Plugin 8 or later, with compileSdk 35 or later
 
 ## Installation
 
@@ -18,7 +19,7 @@ KaraDesk is published on Maven Central. Add it to your app module's `build.gradl
 
 ```kotlin
 dependencies {
-    implementation("com.karadesk:karadesk-android:1.0.0")
+    implementation("com.karadesk:karadesk-android:1.0.1")
 }
 ```
 

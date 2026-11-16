@@ -237,25 +237,27 @@ internal sealed interface MessageAttachment {
     companion object {
         val IMAGE_TYPES = setOf("image/png", "image/jpeg", "image/gif", "image/webp", "image/heic")
 
-        fun from(json: JsonObject): MessageAttachment? = when (json.str("type")) {
-            "file" -> {
-                val url = json.url("url") ?: return null
-                File(
-                    assetId = json.str("asset_id") ?: return null,
-                    name = json.str("name") ?: url.substringAfterLast('/').substringBefore('?'),
-                    contentType = json.str("content_type", "application/octet-stream"),
-                    byteSize = json.long("byte_size") ?: 0,
-                    url = url,
+        fun from(json: JsonObject): MessageAttachment? {
+            return when (json.str("type")) {
+                "file" -> {
+                    val url = json.url("url") ?: return null
+                    File(
+                        assetId = json.str("asset_id") ?: return null,
+                        name = json.str("name") ?: url.substringAfterLast('/').substringBefore('?'),
+                        contentType = json.str("content_type", "application/octet-stream"),
+                        byteSize = json.long("byte_size") ?: 0,
+                        url = url,
+                    )
+                }
+                "article" -> Article(
+                    articleId = json.long("article_id") ?: return null,
+                    helpCenterId = json.long("help_center_id"),
+                    title = json.str("title", ""),
+                    description = json.str("description"),
                 )
+                "link" -> Link(json.url("url") ?: return null, json.str("title"))
+                else -> null
             }
-            "article" -> Article(
-                articleId = json.long("article_id") ?: return null,
-                helpCenterId = json.long("help_center_id"),
-                title = json.str("title", ""),
-                description = json.str("description"),
-            )
-            "link" -> Link(json.url("url") ?: return null, json.str("title"))
-            else -> null
         }
     }
 }
@@ -312,13 +314,15 @@ internal data class UploadedFile(
     val status: String,
 ) {
     companion object {
-        fun from(json: JsonObject): UploadedFile? = UploadedFile(
-            id = json.str("id") ?: return null,
-            name = json.str("name", ""),
-            contentType = json.str("content_type", "application/octet-stream"),
-            byteSize = json.long("byte_size") ?: 0,
-            status = json.str("status", ""),
-        )
+        fun from(json: JsonObject): UploadedFile? {
+            return UploadedFile(
+                id = json.str("id") ?: return null,
+                name = json.str("name", ""),
+                contentType = json.str("content_type", "application/octet-stream"),
+                byteSize = json.long("byte_size") ?: 0,
+                status = json.str("status", ""),
+            )
+        }
     }
 }
 
@@ -350,14 +354,16 @@ internal data class HelpCollection(
     val articleCount: Int,
 ) {
     companion object {
-        fun from(json: JsonObject): HelpCollection? = HelpCollection(
-            id = json.long("id") ?: return null,
-            parentId = json.long("parent_id"),
-            name = json.str("name", ""),
-            description = json.str("description"),
-            position = json.int("position", 0),
-            articleCount = json.int("article_count", 0),
-        )
+        fun from(json: JsonObject): HelpCollection? {
+            return HelpCollection(
+                id = json.long("id") ?: return null,
+                parentId = json.long("parent_id"),
+                name = json.str("name", ""),
+                description = json.str("description"),
+                position = json.int("position", 0),
+                articleCount = json.int("article_count", 0),
+            )
+        }
     }
 }
 
@@ -382,15 +388,17 @@ internal fun List<HelpCollection>.withTotals(): List<HelpCollection> {
 
 internal data class HelpArticleSummary(val id: Long, val title: String, val description: String?) {
     companion object {
-        fun from(json: JsonObject): HelpArticleSummary? =
-            HelpArticleSummary(json.long("id") ?: return null, json.str("title", ""), json.str("description"))
+        fun from(json: JsonObject): HelpArticleSummary? {
+            return HelpArticleSummary(json.long("id") ?: return null, json.str("title", ""), json.str("description"))
+        }
     }
 }
 
 internal data class RichMark(val type: String, val attrs: JsonObject) {
     companion object {
-        fun from(json: JsonObject): RichMark? =
-            RichMark(json.str("type") ?: return null, json.obj("attrs") ?: JsonObject(emptyMap()))
+        fun from(json: JsonObject): RichMark? {
+            return RichMark(json.str("type") ?: return null, json.obj("attrs") ?: JsonObject(emptyMap()))
+        }
     }
 }
 
@@ -421,14 +429,16 @@ internal data class HelpArticle(
     val updatedAt: Instant?,
 ) {
     companion object {
-        fun from(json: JsonObject): HelpArticle? = HelpArticle(
-            id = json.long("id") ?: return null,
-            title = json.str("title", ""),
-            description = json.str("description"),
-            body = json.obj("body")?.let(RichNode::from),
-            author = json.obj("author")?.let(Person::from),
-            updatedAt = json.instant("updated_at"),
-        )
+        fun from(json: JsonObject): HelpArticle? {
+            return HelpArticle(
+                id = json.long("id") ?: return null,
+                title = json.str("title", ""),
+                description = json.str("description"),
+                body = json.obj("body")?.let(RichNode::from),
+                author = json.obj("author")?.let(Person::from),
+                updatedAt = json.instant("updated_at"),
+            )
+        }
     }
 }
 

@@ -117,12 +117,14 @@ internal data class HelpCenterReference(
     val articleReactions: Boolean,
 ) {
     companion object {
-        fun from(json: JsonObject): HelpCenterReference? = HelpCenterReference(
-            id = json.long("id") ?: return null,
-            name = json.str("name", ""),
-            url = json.url("url"),
-            articleReactions = json.bool("article_reactions", false),
-        )
+        fun from(json: JsonObject): HelpCenterReference? {
+            return HelpCenterReference(
+                id = json.long("id") ?: return null,
+                name = json.str("name", ""),
+                url = json.url("url"),
+                articleReactions = json.bool("article_reactions", false),
+            )
+        }
     }
 }
 

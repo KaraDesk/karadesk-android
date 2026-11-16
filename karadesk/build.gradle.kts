@@ -15,6 +15,10 @@ android {
     defaultConfig {
         minSdk = 26
         consumerProguardFiles("consumer-rules.pro")
+
+        aarMetadata {
+            minCompileSdk = 35
+        }
         buildConfigField("String", "SDK_VERSION", "\"${project.property("VERSION_NAME")}\"")
     }
 
@@ -35,9 +39,15 @@ android {
 
 kotlin {
     explicitApi()
+
+    compilerOptions {
+        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+    }
 }
 
 dependencies {
+    implementation(libs.kotlin.stdlib)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.browser)
