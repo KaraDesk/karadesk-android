@@ -160,8 +160,24 @@ internal fun ChatScreen(store: MessengerStore, router: Router, route: Route.Chat
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
+            val loadError = model.loadError
+
             if (conversationId == null) {
                 item(key = "empty") { EmptyChat(store) }
+            } else if (groups.isEmpty() && loadError != null) {
+                item(key = "error") {
+                    ErrorState(
+                        loadError,
+                        title = stringResource(R.string.karadesk_conversation_load_failed),
+                        modifier = Modifier.padding(top = 24.dp),
+                    ) { model.loadThread() }
+                }
+            } else if (groups.isEmpty() && model.isLoading) {
+                item(key = "loading") {
+                    Box(Modifier.fillMaxWidth().padding(top = 64.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = KaraDeskTheme.brand.tint, strokeWidth = 3.dp, modifier = Modifier.size(28.dp))
+                    }
+                }
             }
 
             items(groups, key = { it.id }) { group ->
@@ -277,13 +293,26 @@ private fun Composer(model: ChatModel) {
             .padding(horizontal = 6.dp, vertical = 6.dp),
     ) {
         model.notice?.let {
-            Text(it, fontSize = 13.sp, color = palette.error, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.padding(start = 8.dp, end = 4.dp, top = 4.dp).semantics(mergeDescendants = true) {},
+            ) {
+                Icon(KaraDeskIcons.Error, null, tint = palette.error, modifier = Modifier.padding(top = 1.dp).size(16.dp))
+                Text(it, fontSize = 13.sp, color = palette.error, modifier = Modifier.weight(1f))
+                Icon(
+                    KaraDeskIcons.Close,
+                    stringResource(R.string.karadesk_dismiss),
+                    tint = palette.error,
+                    modifier = Modifier.size(18.dp).clip(CircleShape).clickableWithRole { model.notice = null }.padding(2.dp),
+                )
+            }
         }
 
         if (model.attachments.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
                 items(model.attachments, key = { it.id }) { attachment ->
-                    PendingAttachmentView(attachment) { model.remove(attachment) }
+                    PendingAttachmentView(attachment, onRetry = { model.retry(attachment) }) { model.remove(attachment) }
                 }
             }
         }
@@ -365,7 +394,7 @@ private fun Composer(model: ChatModel) {
 }
 
 @Composable
-private fun PendingAttachmentView(attachment: PendingAttachment, onRemove: () -> Unit) {
+private fun PendingAttachmentView(attachment: PendingAttachment, onRetry: () -> Unit, onRemove: () -> Unit) {
     val palette = KaraDeskTheme.palette
     val context = LocalContext.current
 
@@ -395,6 +424,15 @@ private fun PendingAttachmentView(attachment: PendingAttachment, onRemove: () ->
                 PendingAttachment.Status.Failed -> Text(stringResource(R.string.karadesk_upload_failed), fontSize = 11.sp, color = palette.error)
                 is PendingAttachment.Status.Ready -> Text(Formatting.byteCount(context, attachment.byteSize), fontSize = 11.sp, color = palette.secondaryText)
             }
+        }
+
+        if (attachment.status == PendingAttachment.Status.Failed) {
+            Icon(
+                KaraDeskIcons.Refresh,
+                stringResource(R.string.karadesk_retry),
+                tint = KaraDeskTheme.brand.tint,
+                modifier = Modifier.size(20.dp).clip(CircleShape).clickableWithRole(onClick = onRetry),
+            )
         }
 
         Icon(

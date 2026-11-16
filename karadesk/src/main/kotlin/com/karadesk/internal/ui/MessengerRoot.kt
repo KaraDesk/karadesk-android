@@ -4,17 +4,23 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -49,6 +55,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.karadesk.KaraDeskException
 import com.karadesk.R
+import com.karadesk.internal.net.NetworkMonitor
 import com.karadesk.internal.store.MessengerStore
 import com.karadesk.internal.store.Phase
 
@@ -68,13 +75,32 @@ internal fun MessengerRoot(store: MessengerStore, router: Router, onClose: () ->
         }
 
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalUriHandler provides uriHandler) {
-            Box(Modifier.fillMaxSize().background(KaraDeskTheme.palette.surface)) {
-                when (val current = phase) {
-                    Phase.Ready -> Messenger(store, router, onClose)
-                    is Phase.Failed -> Unavailable(current.error, onClose) { store.startQuietly() }
-                    else -> {
-                        LaunchedEffect(Unit) { store.startQuietly() }
-                        Loading(onClose)
+            val online by NetworkMonitor.isOnline.collectAsStateWithLifecycle()
+
+            LaunchedEffect(online) {
+                if (online) {
+                    store.reconnected()
+                }
+            }
+
+            Column(Modifier.fillMaxSize().background(KaraDeskTheme.palette.surface)) {
+                AnimatedVisibility(visible = !online, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                    OfflineBanner()
+                }
+
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .then(if (online) Modifier else Modifier.consumeWindowInsets(WindowInsets.statusBars)),
+                ) {
+                    when (val current = phase) {
+                        Phase.Ready -> Messenger(store, router, onClose)
+                        is Phase.Failed -> Unavailable(current.error, onClose) { runCatching { store.start() } }
+                        else -> {
+                            LaunchedEffect(Unit) { store.startQuietly() }
+                            Loading(onClose)
+                        }
                     }
                 }
             }
@@ -256,8 +282,7 @@ private fun Loading(onClose: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Unavailable(error: KaraDeskException, onClose: () -> Unit, retry: () -> Unit) {
-    val palette = KaraDeskTheme.palette
+private fun Unavailable(error: KaraDeskException, onClose: () -> Unit, retry: suspend () -> Unit) {
     DefaultStatusBarIcons()
 
     Column(Modifier.fillMaxSize()) {
@@ -266,28 +291,6 @@ private fun Unavailable(error: KaraDeskException, onClose: () -> Unit, retry: ()
             actions = { CloseButton(onClose) },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
         )
-        Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(KaraDeskIcons.Error, null, tint = palette.secondaryText, modifier = Modifier.size(44.dp))
-            Text(
-                stringResource(R.string.karadesk_messenger_unavailable),
-                fontWeight = FontWeight.SemiBold,
-                color = palette.text,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-            Text(
-                if (error is KaraDeskException.Network) stringResource(R.string.karadesk_network_error) else error.message.orEmpty(),
-                color = palette.secondaryText,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp).widthIn(max = 320.dp),
-            )
-            if (error is KaraDeskException.Network) {
-                ProminentButton(stringResource(R.string.karadesk_retry), retry, Modifier.padding(top = 20.dp))
-            }
-        }
+        ErrorState(error, retry = retry)
     }
 }

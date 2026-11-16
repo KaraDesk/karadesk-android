@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathBuilder
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
@@ -21,7 +22,26 @@ private fun ImageVector.Builder.materialPath(fillAlpha: Float = 1f, block: PathB
     path(fill = SolidColor(Color.Black), fillAlpha = fillAlpha, pathBuilder = block)
 }
 
+private fun pathIcon(name: String, data: String): ImageVector =
+    icon(name, autoMirror = false) {
+        addPath(PathParser().parsePathString(data).toNodes(), fill = SolidColor(Color.Black))
+    }
+
 internal object KaraDeskIcons {
+    val WifiOff: ImageVector by lazy {
+        pathIcon(
+            "WifiOff",
+            "M22.99,9C19.15,5.16 13.8,3.76 8.84,4.78l2.52,2.52c3.47,-0.17 6.99,1.05 9.63,3.7l2,-2zM18.99,13c-1.29,-1.29 -2.84,-2.13 -4.49,-2.56l3.53,3.53 0.96,-0.97zM2,3.05L5.07,6.1C3.6,6.82 2.22,7.78 1,9l1.99,2c1.24,-1.24 2.67,-2.16 4.2,-2.77l2.24,2.24C7.81,10.89 6.27,11.73 5,13v0.01L6.99,15c1.36,-1.36 3.14,-2.04 4.92,-2.06L18.98,20l1.27,-1.26L3.29,1.79 2,3.05zM9,17l3,3 3,-3c-1.65,-1.66 -4.34,-1.66 -6,0z",
+        )
+    }
+
+    val Refresh: ImageVector by lazy {
+        pathIcon(
+            "Refresh",
+            "M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0 -7.99,3.58 -7.99,8s3.57,8 7.99,8c3.73,0 6.84,-2.55 7.73,-6h-2.08c-0.82,2.33 -3.04,4 -5.65,4 -3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6c1.66,0 3.14,0.69 4.22,1.78L13,11h7V4l-2.35,2.35z",
+        )
+    }
+
     val Close: ImageVector by lazy {
         icon("Close", autoMirror = false) {
             materialPath {

@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun MessagesScreen(store: MessengerStore, router: Router, onClose: () -> Unit) {
     val conversations by store.conversations.collectAsStateWithLifecycle()
+    val conversationsError by store.conversationsError.collectAsStateWithLifecycle()
     val boot by store.boot.collectAsStateWithLifecycle()
     val palette = KaraDeskTheme.palette
     val scope = rememberCoroutineScope()
@@ -61,7 +62,13 @@ internal fun MessagesScreen(store: MessengerStore, router: Router, onClose: () -
         )
 
         Box(Modifier.fillMaxSize()) {
-            if (conversations.isEmpty()) {
+            val loadError = conversationsError
+
+            if (conversations.isEmpty() && loadError != null) {
+                ErrorState(loadError, title = stringResource(R.string.karadesk_messages_load_failed)) {
+                    store.refreshConversations()
+                }
+            } else if (conversations.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(32.dp),
                     verticalArrangement = Arrangement.Center,

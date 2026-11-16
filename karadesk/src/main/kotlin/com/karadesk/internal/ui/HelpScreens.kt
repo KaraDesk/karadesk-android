@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.karadesk.KaraDeskException
 import com.karadesk.R
 import com.karadesk.internal.model.ArticleReaction
 import com.karadesk.internal.model.HelpArticle
@@ -75,17 +76,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
-private suspend fun MessengerStore.collections(helpCenterId: Long): List<HelpCollection>? = runCatching {
+private suspend fun MessengerStore.collections(helpCenterId: Long): List<HelpCollection> =
     (help(Requests.collections(helpCenterId)) as? JsonObject)?.get("data").objects().mapNotNull(HelpCollection::from)
-}.getOrNull()
 
-private suspend fun MessengerStore.articles(helpCenterId: Long, collectionId: Long): List<HelpArticleSummary>? = runCatching {
+private suspend fun MessengerStore.articles(helpCenterId: Long, collectionId: Long): List<HelpArticleSummary> =
     (help(Requests.articles(helpCenterId, collectionId)) as? JsonObject)?.get("data").objects().mapNotNull(HelpArticleSummary::from)
-}.getOrNull()
 
-private suspend fun MessengerStore.search(helpCenterId: Long, query: String): List<HelpArticleSummary> = runCatching {
+private suspend fun MessengerStore.search(helpCenterId: Long, query: String): List<HelpArticleSummary> =
     (help(Requests.search(helpCenterId, query)) as? JsonObject)?.get("data").objects().mapNotNull(HelpArticleSummary::from)
-}.getOrNull().orEmpty()
 
 @Composable
 internal fun HelpScreen(store: MessengerStore, router: Router, onClose: () -> Unit) {
@@ -94,14 +92,43 @@ internal fun HelpScreen(store: MessengerStore, router: Router, onClose: () -> Un
     val palette = KaraDeskTheme.palette
     var collections by remember { mutableStateOf<List<HelpCollection>?>(null) }
     var results by remember { mutableStateOf<List<HelpArticleSummary>?>(null) }
+    var loadError by remember { mutableStateOf<KaraDeskException?>(null) }
+    var searchError by remember { mutableStateOf<KaraDeskException?>(null) }
     val query = router.helpQuery
+
+    suspend fun loadCollections() {
+        val center = helpCenter
+
+        if (center == null) {
+            collections = emptyList()
+            return
+        }
+
+        loadError = null
+
+        try {
+            collections = store.collections(center.id).withTotalsRoots()
+        } catch (error: KaraDeskException) {
+            loadError = error
+        }
+    }
+
+    suspend fun runSearch(term: String) {
+        val center = helpCenter ?: return
+
+        try {
+            results = store.search(center.id, term)
+            searchError = null
+        } catch (error: KaraDeskException) {
+            results = null
+            searchError = error
+        }
+    }
 
     DefaultStatusBarIcons()
 
     LaunchedEffect(helpCenter?.id) {
-        collections = helpCenter?.let { center ->
-            store.collections(center.id)?.withTotalsRoots()
-        } ?: emptyList()
+        loadCollections()
     }
 
     LaunchedEffect(query, helpCenter?.id) {
@@ -109,11 +136,12 @@ internal fun HelpScreen(store: MessengerStore, router: Router, onClose: () -> Un
 
         if (helpCenter == null || term.isEmpty()) {
             results = null
+            searchError = null
             return@LaunchedEffect
         }
 
         delay(250)
-        results = store.search(helpCenter.id, term)
+        runSearch(term)
     }
 
     Column(Modifier.fillMaxSize().background(palette.background)) {
@@ -131,7 +159,7 @@ internal fun HelpScreen(store: MessengerStore, router: Router, onClose: () -> Un
                 if (query.isBlank()) {
                     val list = collections
 
-                    if (list != null && list.isEmpty()) {
+                    if (list != null && list.isEmpty() && loadError == null) {
                         item { EmptyText(stringResource(R.string.karadesk_no_articles)) }
                     }
 
@@ -142,8 +170,11 @@ internal fun HelpScreen(store: MessengerStore, router: Router, onClose: () -> Un
                     }
                 } else {
                     val list = results
+                    val failure = searchError
 
-                    if (list != null && list.isEmpty()) {
+                    if (failure != null) {
+                        item { InlineError(failure) { runSearch(query.trim()) } }
+                    } else if (list != null && list.isEmpty()) {
                         item { EmptyText(stringResource(R.string.karadesk_no_results)) }
                     }
 
@@ -153,7 +184,11 @@ internal fun HelpScreen(store: MessengerStore, router: Router, onClose: () -> Un
                 }
             }
 
-            if (collections == null && query.isBlank()) {
+            val failure = loadError
+
+            if (query.isBlank() && failure != null && collections.isNullOrEmpty()) {
+                ErrorState(failure, title = stringResource(R.string.karadesk_help_load_failed)) { loadCollections() }
+            } else if (collections == null && query.isBlank()) {
                 Spinner()
             }
         }
@@ -218,17 +253,28 @@ internal fun CollectionScreen(store: MessengerStore, router: Router, route: Rout
     val palette = KaraDeskTheme.palette
     var children by remember { mutableStateOf<List<HelpCollection>?>(null) }
     var articles by remember { mutableStateOf<List<HelpArticleSummary>?>(null) }
+    var loadError by remember { mutableStateOf<KaraDeskException?>(null) }
+
+    suspend fun load() {
+        loadError = null
+
+        try {
+            coroutineScope {
+                val loadedChildren = async { store.collections(route.helpCenterId) }
+                val loadedArticles = async { store.articles(route.helpCenterId, route.collectionId) }
+
+                children = loadedChildren.await().withTotals().filter { it.parentId == route.collectionId }
+                articles = loadedArticles.await()
+            }
+        } catch (error: KaraDeskException) {
+            loadError = error
+        }
+    }
 
     DefaultStatusBarIcons()
 
     LaunchedEffect(route) {
-        coroutineScope {
-            val loadedChildren = async { store.collections(route.helpCenterId) }
-            val loadedArticles = async { store.articles(route.helpCenterId, route.collectionId) }
-
-            children = loadedChildren.await().orEmpty().withTotals().filter { it.parentId == route.collectionId }
-            articles = loadedArticles.await().orEmpty()
-        }
+        load()
     }
 
     Column(Modifier.fillMaxSize().background(palette.background)) {
@@ -262,7 +308,11 @@ internal fun CollectionScreen(store: MessengerStore, router: Router, route: Rout
                 }
             }
 
-            if (children == null || articles == null) {
+            val failure = loadError
+
+            if (failure != null) {
+                ErrorState(failure, title = stringResource(R.string.karadesk_help_load_failed)) { load() }
+            } else if (children == null || articles == null) {
                 Spinner()
             }
         }
@@ -390,23 +440,33 @@ internal fun ArticleScreen(store: MessengerStore, router: Router, route: Route.A
     val helpCenter = boot?.settings?.helpCenter(route.helpCenterId)
     var article by remember { mutableStateOf<HelpArticle?>(null) }
     var failed by remember { mutableStateOf(false) }
+    var loadError by remember { mutableStateOf<KaraDeskException?>(null) }
     var reaction by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     DefaultStatusBarIcons()
 
-    LaunchedEffect(route) {
+    suspend fun load() {
         val id = route.helpCenterId ?: boot?.settings?.helpCenter?.id
 
         if (id == null) {
             failed = true
-            return@LaunchedEffect
+            return
         }
 
-        article = runCatching {
-            (store.help(Requests.article(id, route.articleId)) as? JsonObject)?.let(HelpArticle::from)
-        }.getOrNull()
-        failed = article == null
+        loadError = null
+
+        try {
+            article = (store.help(Requests.article(id, route.articleId)) as? JsonObject)?.let(HelpArticle::from)
+            failed = article == null
+        } catch (error: KaraDeskException) {
+            loadError = error
+            failed = true
+        }
+    }
+
+    LaunchedEffect(route) {
+        load()
     }
 
     Column(Modifier.fillMaxSize().background(palette.surface)) {
@@ -441,12 +501,16 @@ internal fun ArticleScreen(store: MessengerStore, router: Router, route: Route.A
 
                     current.body?.let { RichText(it, helpCenter?.url) }
                 }
+                loadError?.isRetryable == true -> ErrorState(
+                    loadError!!,
+                    title = stringResource(R.string.karadesk_article_load_failed),
+                ) { load() }
                 failed -> Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxSize().padding(top = 80.dp),
                 ) {
                     Icon(KaraDeskIcons.Document, null, tint = palette.secondaryText, modifier = Modifier.size(40.dp))
-                    Text(stringResource(R.string.karadesk_no_articles), color = palette.secondaryText, modifier = Modifier.padding(top = 12.dp))
+                    Text(stringResource(R.string.karadesk_article_unavailable), color = palette.secondaryText, modifier = Modifier.padding(top = 12.dp))
                 }
                 else -> Spinner()
             }

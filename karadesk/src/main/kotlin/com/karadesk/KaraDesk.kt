@@ -10,6 +10,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.karadesk.internal.model.AuthorKind
 import com.karadesk.internal.model.MessageAuthor
 import com.karadesk.internal.net.ApiClient
+import com.karadesk.internal.net.NetworkMonitor
 import com.karadesk.internal.push.PushHandler
 import com.karadesk.internal.push.PushPayload
 import com.karadesk.internal.store.DeviceContext
@@ -144,6 +145,7 @@ public object KaraDesk {
 
         val firstStart = this.application == null
         this.application = application
+        NetworkMonitor.start(application)
 
         val created = MessengerStore(
             context = application,

@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.karadesk.KaraDeskException
 import com.karadesk.R
 import com.karadesk.internal.model.AttachmentRules
 import com.karadesk.internal.model.ConversationState
@@ -36,6 +37,7 @@ internal class PendingAttachment(
     val contentType: String,
     val byteSize: Long,
     val preview: ImageBitmap?,
+    val bytes: ByteArray,
 ) {
     var status by mutableStateOf<Status>(Status.Uploading)
 
@@ -59,6 +61,10 @@ internal class ChatModel(
     var isSending by mutableStateOf(false)
         private set
     var notice by mutableStateOf<String?>(null)
+    var isLoading by mutableStateOf(false)
+        private set
+    var loadError by mutableStateOf<KaraDeskException?>(null)
+        private set
     val attachments = mutableStateListOf<PendingAttachment>()
 
     private var lastTypingSent = Instant.EPOCH
@@ -90,10 +96,25 @@ internal class ChatModel(
         store.visibleConversationId = id
 
         if (store.threads.value[id] == null) {
-            runCatching { store.loadThread(id) }
+            loadThread()
         }
 
         store.markRead(id)
+    }
+
+    suspend fun loadThread() {
+        val id = conversationId ?: return
+
+        isLoading = true
+        loadError = null
+
+        try {
+            store.loadThread(id)
+        } catch (error: KaraDeskException) {
+            loadError = error
+        } finally {
+            isLoading = false
+        }
     }
 
     fun disappear() {
@@ -133,8 +154,8 @@ internal class ChatModel(
             }
 
             id
-        } catch (error: Exception) {
-            notice = error.message
+        } catch (error: KaraDeskException) {
+            notice = context.getString(R.string.karadesk_not_sent, error.userMessage(context))
             null
         } finally {
             isSending = false
@@ -144,9 +165,15 @@ internal class ChatModel(
     suspend fun rate(message: Message, rating: Int?, remark: String?) {
         try {
             store.rate(message, rating, remark)
-        } catch (error: Exception) {
-            notice = error.message
+        } catch (error: KaraDeskException) {
+            notice = error.userMessage(context)
         }
+    }
+
+    fun retry(attachment: PendingAttachment) {
+        attachment.status = PendingAttachment.Status.Uploading
+        notice = null
+        upload(attachment)
     }
 
     fun remove(attachment: PendingAttachment) {
@@ -217,14 +244,18 @@ internal class ChatModel(
             return
         }
 
-        val pending = PendingAttachment(name = name, contentType = contentType, byteSize = bytes.size.toLong(), preview = preview)
+        val pending = PendingAttachment(name = name, contentType = contentType, byteSize = bytes.size.toLong(), preview = preview, bytes = bytes)
         attachments.add(pending)
         notice = null
+        upload(pending)
+    }
 
+    private fun upload(pending: PendingAttachment) {
         store.scope.launch {
             pending.status = try {
-                PendingAttachment.Status.Ready(store.upload(bytes, name, contentType))
-            } catch (_: Exception) {
+                PendingAttachment.Status.Ready(store.upload(pending.bytes, pending.name, pending.contentType))
+            } catch (error: KaraDeskException) {
+                notice = error.userMessage(context)
                 PendingAttachment.Status.Failed
             }
         }

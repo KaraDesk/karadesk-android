@@ -65,6 +65,7 @@ internal class MessengerStore(
     private val _threads = MutableStateFlow<Map<Long, List<Message>>>(emptyMap())
     private val _typing = MutableStateFlow<Map<Long, Typing>>(emptyMap())
     private val _unread = MutableStateFlow(0)
+    private val _conversationsError = MutableStateFlow<KaraDeskException?>(null)
 
     val phase: StateFlow<Phase> = _phase.asStateFlow()
     val boot: StateFlow<BootResponse?> = _boot.asStateFlow()
@@ -72,6 +73,7 @@ internal class MessengerStore(
     val threads: StateFlow<Map<Long, List<Message>>> = _threads.asStateFlow()
     val typing: StateFlow<Map<Long, Typing>> = _typing.asStateFlow()
     val unreadConversationCount: StateFlow<Int> = _unread.asStateFlow()
+    val conversationsError: StateFlow<KaraDeskException?> = _conversationsError.asStateFlow()
 
     var user: KaraDeskUser? = identity.user()
         private set
@@ -239,6 +241,12 @@ internal class MessengerStore(
                 _phase.value = Phase.Failed(error)
             }
 
+            when (error) {
+                is KaraDeskException.Unavailable -> Log.e(TAG, "The messenger is unavailable: ${error.message}")
+                is KaraDeskException.IdentityVerificationFailed -> Log.e(TAG, "Identity verification failed: ${error.message}")
+                else -> Unit
+            }
+
             throw error
         }
     }
@@ -254,11 +262,29 @@ internal class MessengerStore(
     }
 
     suspend fun refreshConversations() {
-        val json = runCatching { authorized(Requests.conversations()) }.getOrNull() as? JsonObject ?: return
+        val json = try {
+            authorized(Requests.conversations()) as? JsonObject ?: throw KaraDeskException.UnexpectedResponse()
+        } catch (error: KaraDeskException) {
+            _conversationsError.value = error
+            return
+        }
+
+        _conversationsError.value = null
         _conversations.value = json["data"].objects()
             .mapNotNull { runCatching { Conversation.from(it) }.getOrNull() }
             .sortedByDescending { it.sortDate }
         publishUnreadCount()
+    }
+
+    suspend fun reconnected() {
+        when (_phase.value) {
+            is Phase.Failed -> runCatching { start() }
+            Phase.Ready -> {
+                resumeRealtime()
+                refreshConversations()
+            }
+            else -> Unit
+        }
     }
 
     // Conversations
@@ -344,6 +370,13 @@ internal class MessengerStore(
         return try {
             client.send(request, token)
         } catch (error: KaraDeskException) {
+            if (error.isMessengerUnavailable) {
+                Log.e(TAG, "The messenger became unavailable: ${error.message}")
+                suspendRealtime()
+                _phase.value = Phase.Failed(error)
+                throw error
+            }
+
             if (!error.isExpiredSession) {
                 throw error
             }
@@ -564,6 +597,7 @@ internal class MessengerStore(
         suspendRealtime()
         _boot.value = null
         _conversations.value = emptyList()
+        _conversationsError.value = null
         _threads.value = emptyMap()
         _typing.value = emptyMap()
         _phase.value = Phase.Idle
@@ -574,3 +608,6 @@ internal class MessengerStore(
         const val TAG = "KaraDesk"
     }
 }
+
+internal val KaraDeskException.isMessengerUnavailable: Boolean
+    get() = this is KaraDeskException.Unavailable && message.orEmpty().contains("messenger", ignoreCase = true)

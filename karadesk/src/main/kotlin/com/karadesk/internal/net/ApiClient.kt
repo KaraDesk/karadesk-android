@@ -103,7 +103,7 @@ internal class ApiClient(
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if (continuation.isActive) {
-                    continuation.resumeWithException(KaraDeskException.Network(e))
+                    continuation.resumeWithException(networkError(e))
                 }
             }
 
@@ -112,7 +112,7 @@ internal class ApiClient(
                     response.use { it.code to it.body.string() }
                 } catch (e: IOException) {
                     if (continuation.isActive) {
-                        continuation.resumeWithException(KaraDeskException.Network(e))
+                        continuation.resumeWithException(networkError(e))
                     }
                     return
                 }
@@ -130,10 +130,15 @@ internal class ApiClient(
         private const val UPLOAD_FAILED = "The upload failed. Please try again."
 
         fun defaultHttpClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
+            .callTimeout(90, TimeUnit.SECONDS)
             .build()
+
+        fun networkError(error: IOException): KaraDeskException.Network {
+            return KaraDeskException.Network(error, offline = !NetworkMonitor.isOnline.value)
+        }
 
         fun errorFor(status: Int, body: String): KaraDeskException {
             val message = runCatching {
