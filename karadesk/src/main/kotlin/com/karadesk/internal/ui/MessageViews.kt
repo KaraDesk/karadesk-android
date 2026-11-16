@@ -117,6 +117,7 @@ internal fun MessageGroupView(
     group: MessageGroup,
     onOpenArticle: (MessageAttachment.Article) -> Unit,
     onRate: suspend (Message, Int?, String?) -> Unit,
+    componentHandlers: ComponentHandlers,
 ) {
     val palette = KaraDeskTheme.palette
     val context = LocalContext.current
@@ -160,7 +161,7 @@ internal fun MessageGroupView(
             }
 
             group.messages.forEachIndexed { index, message ->
-                MessageView(message, group.isMine, index == group.messages.lastIndex, onOpenArticle, onRate)
+                MessageView(message, group.isMine, index == group.messages.lastIndex, onOpenArticle, onRate, componentHandlers)
             }
 
             group.messages.lastOrNull()?.let {
@@ -186,6 +187,7 @@ private fun MessageView(
     tail: Boolean,
     onOpenArticle: (MessageAttachment.Article) -> Unit,
     onRate: suspend (Message, Int?, String?) -> Unit,
+    componentHandlers: ComponentHandlers,
 ) {
     val brand = KaraDeskTheme.brand
     val palette = KaraDeskTheme.palette
@@ -209,15 +211,21 @@ private fun MessageView(
                     lineHeight = 21.sp,
                     color = foreground,
                     modifier = Modifier
-                        .clip(bubbleShape(mine, tail && message.attachments.isEmpty()))
+                        .clip(bubbleShape(mine, tail && message.attachments.isEmpty() && message.components.isEmpty()))
                         .background(if (mine) brand.accent else palette.bubble)
                         .padding(horizontal = 14.dp, vertical = 9.dp),
                 )
             }
         }
 
-        message.attachments.forEach { attachment ->
+        FileAttachments(message.attachments.filterIsInstance<MessageAttachment.File>())
+
+        message.attachments.filterNot { it is MessageAttachment.File }.forEach { attachment ->
             AttachmentView(attachment, onOpenArticle)
+        }
+
+        if (!mine && message.components.isNotEmpty()) {
+            MessageComponentsView(message, componentHandlers)
         }
     }
 }
@@ -228,28 +236,7 @@ private fun AttachmentView(attachment: MessageAttachment, onOpenArticle: (Messag
     val palette = KaraDeskTheme.palette
 
     when (attachment) {
-        is MessageAttachment.File -> if (attachment.isImage) {
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(context).data(attachment.url).build(),
-                imageLoader = Images.loader(context),
-                contentDescription = attachment.name,
-                contentScale = ContentScale.Fit,
-                loading = {
-                    Box(Modifier.size(220.dp, 160.dp).background(palette.bubble), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(strokeWidth = 2.dp, color = palette.secondaryText, modifier = Modifier.size(22.dp))
-                    }
-                },
-                modifier = Modifier
-                    .widthIn(max = 240.dp)
-                    .heightIn(max = 320.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickableWithRole(attachment.name) { openUrl(context, attachment.url) },
-            )
-        } else {
-            AttachmentCard(KaraDeskIcons.Document, attachment.name, Formatting.byteCount(context, attachment.byteSize), KaraDeskIcons.Download) {
-                openUrl(context, attachment.url)
-            }
-        }
+        is MessageAttachment.File -> FileAttachments(listOf(attachment))
         is MessageAttachment.Article -> AttachmentCard(KaraDeskIcons.Book, attachment.title, attachment.description, KaraDeskIcons.ChevronRight) {
             onOpenArticle(attachment)
         }

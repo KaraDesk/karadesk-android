@@ -159,7 +159,7 @@ public object KaraDesk {
 
         created.onIncomingMessage = { message ->
             if (showsInAppMessages) {
-                InAppMessages.show(message.id, message.conversationId, message.author, message.body) { id ->
+                InAppMessages.show(message.id, message.conversationId, message.author, message.previewText) { id ->
                     present(application, Destination.Conversation(id))
                 }
             }

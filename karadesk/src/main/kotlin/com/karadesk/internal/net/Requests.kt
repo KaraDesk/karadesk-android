@@ -1,6 +1,7 @@
 package com.karadesk.internal.net
 
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -91,6 +92,16 @@ internal object Requests {
             put("message_id", messageId)
             rating?.let { put("rating", it) }
             remark?.let { put("remark", it) }
+        },
+    )
+
+    fun interact(conversationId: Long, messageId: String, componentId: String, buttonId: String?, value: JsonPrimitive?) = ApiRequest(
+        HttpMethod.POST,
+        "/v1/messenger/conversations/$conversationId/messages/$messageId/interactions",
+        body = buildJsonObject {
+            put("component_id", componentId)
+            buttonId?.let { put("button_id", it) }
+            value?.let { put("value", it) }
         },
     )
 

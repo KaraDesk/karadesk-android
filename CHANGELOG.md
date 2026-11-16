@@ -2,6 +2,16 @@
 
 All notable changes to the KaraDesk Android SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## 1.1.0
+
+- Messages from Kara, KaraDesk's AI agent, show their interactive parts: reply buttons, suggested articles, a single question field (text, email, phone, number or a choice from a list) and cards. Answers are sent to KaraDesk, the chosen button is marked, and errors such as an invalid email address show under the question. Tapping a suggested article opens it in the help center inside the messenger.
+- Image attachments are shown at their own shape, up to 384dp tall, and several images appear as a grid of square thumbnails. Videos show a thumbnail with a play button.
+- Tapping an attachment opens it inside the messenger: images in a full-screen viewer with zoom, swiping between images, sharing and saving to Pictures (Android 10 and later), videos in an in-app player, and PDFs page by page after downloading. Other files open in an app of the user's choice. The browser is only used when a file can't be opened.
+- The SDK adds its own file provider (authority `${applicationId}.karadesk.files`) to share and open downloaded files. It doesn't affect your app's providers.
+- File sizes are written the same way as the web messenger, for example "1.5 MB".
+- Messages that are only buttons or a card show a useful preview in the conversation list and in-app notifications.
+- The home screen's reply time reads "We typically reply in a few minutes" for every reply-time setting.
+
 ## 1.0.1
 
 - Works in more apps. The SDK now builds with Android Gradle Plugin 8 and Kotlin 2.0 or later and compileSdk 35 or later, instead of requiring Android Gradle Plugin 9.1, Kotlin 2.4 and compileSdk 37. It depends on the oldest library versions it needs (Compose BOM 2024.12, OkHttp 4.12, Coil 3.0), so your app's newer versions are used when you have them.

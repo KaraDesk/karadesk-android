@@ -89,6 +89,24 @@ internal fun ChatScreen(store: MessengerStore, router: Router, route: Route.Chat
     var now by remember { mutableStateOf(Instant.now()) }
     val typingAuthor = conversationId?.let { typing[it] }?.takeIf { it.until.isAfter(now) }?.author
 
+    val componentHandlers = remember(model, router) {
+        ComponentHandlers(
+            interact = model::interact,
+            interactInBackground = model::interactInBackground,
+            openArticle = { article ->
+                val articleId = article.articleId
+                val helpCenterId = article.helpCenterId
+                val url = article.url
+
+                if (articleId != null && helpCenterId != null && store.settings?.helpCenter(helpCenterId) != null) {
+                    router.push(Route.Article(helpCenterId, articleId))
+                } else if (url != null) {
+                    openUrl(context, url)
+                }
+            },
+        )
+    }
+
     LaunchedEffect(typing) {
         now = Instant.now()
         val next = typing.values.minOfOrNull { it.until } ?: return@LaunchedEffect
@@ -187,6 +205,7 @@ internal fun ChatScreen(store: MessengerStore, router: Router, route: Route.Chat
                         router.push(Route.Article(article.helpCenterId, article.articleId))
                     },
                     onRate = { message, rating, remark -> model.rate(message, rating, remark) },
+                    componentHandlers = componentHandlers,
                 )
             }
 

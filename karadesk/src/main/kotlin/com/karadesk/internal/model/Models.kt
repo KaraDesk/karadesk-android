@@ -108,7 +108,7 @@ internal data class ConversationPreview(
         }
 
         fun of(message: Message): ConversationPreview =
-            ConversationPreview(message.id, message.author.kind, message.author.name, message.body, message.createdAt)
+            ConversationPreview(message.id, message.author.kind, message.author.name, message.previewText, message.createdAt)
     }
 }
 
@@ -271,6 +271,7 @@ internal data class Message(
     val attachments: List<MessageAttachment>,
     val metadata: MessageMetadata?,
     val createdAt: Instant,
+    val components: List<MessageComponent> = emptyList(),
 ) {
     val isFromContact: Boolean
         get() = author.kind == AuthorKind.CONTACT
@@ -280,9 +281,26 @@ internal data class Message(
 
     val isRenderable: Boolean
         get() = when (kind) {
-            MessageKind.Comment, MessageKind.ReplyTime -> body.isNotEmpty() || attachments.isNotEmpty()
+            MessageKind.Comment, MessageKind.ReplyTime ->
+                body.isNotEmpty() || attachments.isNotEmpty() || components.any { it.isRenderable }
             MessageKind.Csat -> metadata != null
             is MessageKind.Other -> false
+        }
+
+    val previewText: String
+        get() {
+            if (body.isNotBlank()) {
+                return body
+            }
+
+            return components.firstNotNullOfOrNull { component ->
+                when (component) {
+                    is MessageComponent.Buttons -> component.prompt
+                    is MessageComponent.Input -> component.label
+                    is MessageComponent.Card -> component.title
+                    else -> null
+                }?.takeIf { it.isNotBlank() } ?: component.fallbackText?.takeIf { it.isNotBlank() }
+            } ?: body
         }
 
     companion object {
@@ -301,6 +319,7 @@ internal data class Message(
                 attachments = json.list("attachments", MessageAttachment::from),
                 metadata = json.obj("metadata")?.let(MessageMetadata::from),
                 createdAt = createdAt,
+                components = json.list("components", MessageComponent::from),
             )
         }
     }

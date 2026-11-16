@@ -19,7 +19,7 @@ KaraDesk is published on Maven Central. Add it to your app module's `build.gradl
 
 ```kotlin
 dependencies {
-    implementation("com.karadesk:karadesk-android:1.0.1")
+    implementation("com.karadesk:karadesk-android:1.1.0")
 }
 ```
 

@@ -31,7 +31,7 @@
     <string name="karadesk_start_new_conversation">Start a new conversation</string>
     <string name="karadesk_active_now">Active now</string>
     <string name="karadesk_reply_soon">Will reply as soon as possible</string>
-    <string name="karadesk_reply_time">We typically reply in %1$s</string>
+    <string name="karadesk_reply_time">We typically reply %1$s</string>
     <string name="karadesk_powered_by">Powered by KaraDesk</string>
     <string name="karadesk_team">Team</string>
     <string name="karadesk_you">You</string>
@@ -82,6 +82,18 @@
     <string name="karadesk_reaction_sad">Not helpful</string>
     <string name="karadesk_reaction_neutral">Somewhat helpful</string>
     <string name="karadesk_reaction_happy">Helpful</string>
+    <string name="karadesk_choose_one">Choose one</string>
+    <string name="karadesk_file">File</string>
+    <string name="karadesk_play_video">Play video</string>
+    <string name="karadesk_image_count">%1$d of %2$d</string>
+    <string name="karadesk_page_count">Page %1$d of %2$d</string>
+    <string name="karadesk_share">Share</string>
+    <string name="karadesk_save_to_photos">Save to Photos</string>
+    <string name="karadesk_saved_to_photos">Saved to Photos</string>
+    <string name="karadesk_save_failed">Couldn\'t save the image</string>
+    <string name="karadesk_open_with">Open in another app</string>
+    <string name="karadesk_open_failed">Couldn\'t open this file</string>
+    <string name="karadesk_downloading">Downloading…</string>
     <string name="karadesk_notification_channel">Support messages</string>
     <string name="karadesk_notification_channel_description">Replies from the support team</string>
     <plurals name="karadesk_article_count">

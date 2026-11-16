@@ -417,11 +417,19 @@ internal fun UnreadDot() {
 }
 
 @Composable
-internal fun replyExpectation(replyTime: String?): String =
+internal fun replyExpectation(replyTime: String?): String {
     if (replyTime.isNullOrEmpty()) {
-        stringResource(R.string.karadesk_reply_soon)
+        return stringResource(R.string.karadesk_reply_soon)
+    }
+
+    return stringResource(R.string.karadesk_reply_time, replyPhrase(replyTime))
+}
+
+internal fun replyPhrase(replyTime: String): String =
+    if (replyTime.startsWith("in ", ignoreCase = true)) {
+        replyTime
     } else {
-        stringResource(R.string.karadesk_reply_time, replyTime)
+        "in $replyTime"
     }
 
 @Composable

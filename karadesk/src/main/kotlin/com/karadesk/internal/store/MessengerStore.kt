@@ -10,6 +10,7 @@ import com.karadesk.internal.model.Conversation
 import com.karadesk.internal.model.ConversationPreview
 import com.karadesk.internal.model.ConversationState
 import com.karadesk.internal.model.ConversationThread
+import com.karadesk.internal.model.InteractionResult
 import com.karadesk.internal.model.Message
 import com.karadesk.internal.model.MessageAuthor
 import com.karadesk.internal.model.MessengerSettings
@@ -37,6 +38,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.time.Duration
 import java.time.Instant
 
@@ -338,6 +340,15 @@ internal class MessengerStore(
         val json = authorized(Requests.rate(message.conversationId, message.id, rating, remark)) as? JsonObject
             ?: throw KaraDeskException.UnexpectedResponse()
         Message.from(json)?.let(::replace)
+    }
+
+    suspend fun interact(message: Message, componentId: String, buttonId: String?, value: JsonPrimitive?) {
+        val request = Requests.interact(message.conversationId, message.id, componentId, buttonId, value)
+        val json = authorized(request) as? JsonObject ?: throw KaraDeskException.UnexpectedResponse()
+        val result = InteractionResult.from(json) ?: throw KaraDeskException.UnexpectedResponse()
+
+        replace(result.message)
+        result.reply?.let(::append)
     }
 
     suspend fun upload(bytes: ByteArray, filename: String, contentType: String): UploadedFile {

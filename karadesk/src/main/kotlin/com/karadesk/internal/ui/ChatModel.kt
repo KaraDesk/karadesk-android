@@ -25,6 +25,7 @@ import com.karadesk.internal.store.MessengerStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonPrimitive
 import java.io.ByteArrayOutputStream
 import java.time.Duration
 import java.time.Instant
@@ -167,6 +168,21 @@ internal class ChatModel(
             store.rate(message, rating, remark)
         } catch (error: KaraDeskException) {
             notice = error.userMessage(context)
+        }
+    }
+
+    suspend fun interact(message: Message, componentId: String, buttonId: String?, value: JsonPrimitive?): String? {
+        return try {
+            store.interact(message, componentId, buttonId, value)
+            null
+        } catch (error: KaraDeskException) {
+            error.userMessage(context)
+        }
+    }
+
+    fun interactInBackground(message: Message, componentId: String, buttonId: String) {
+        store.scope.launch {
+            runCatching { store.interact(message, componentId, buttonId, null) }
         }
     }
 

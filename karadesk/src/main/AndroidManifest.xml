@@ -11,6 +11,12 @@
             android:launchMode="singleTop"
             android:theme="@style/KaraDesk.Theme"
             android:windowSoftInputMode="adjustResize" />
+
+        <provider
+            android:name="com.karadesk.internal.ui.KaraDeskFileProvider"
+            android:authorities="${applicationId}.karadesk.files"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 
     <queries>
