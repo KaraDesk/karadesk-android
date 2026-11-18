@@ -2,6 +2,11 @@
 
 All notable changes to the KaraDesk Android SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## 1.2.0
+
+- Track what people do in your app with `KaraDesk.trackEvent(name, metadata)`, for example `KaraDesk.trackEvent("Placed order", mapOf("total" to 49.99, "items" to listOf(mapOf("sku" to "A-100", "quantity" to 2))))`. Events appear on the person's profile in KaraDesk with how many times they did it and when. Metadata can hold text, numbers, booleans, null, dates, lists and maps.
+- Events are saved on the device (up to 1,000) and sent in batches: after 20 events, every 30 seconds, when your app goes to the background and when the connection comes back. Events tracked offline are sent later, failed sends are retried with increasing waits, and each event stays with whoever was signed in when it was tracked.
+
 ## 1.1.1
 
 - Fixes a crash when opening a conversation with reply buttons from Kara in apps that use a newer Compose version than the SDK was built with. The buttons now wrap with the SDK's own layout instead of Compose's experimental FlowRow, so they work with every supported Compose version.

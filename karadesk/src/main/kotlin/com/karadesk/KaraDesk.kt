@@ -14,6 +14,7 @@ import com.karadesk.internal.net.NetworkMonitor
 import com.karadesk.internal.push.PushHandler
 import com.karadesk.internal.push.PushPayload
 import com.karadesk.internal.store.DeviceContext
+import com.karadesk.internal.store.EventMetadata
 import com.karadesk.internal.store.IdentityStore
 import com.karadesk.internal.store.MessengerStore
 import com.karadesk.internal.ui.ActivityTracker
@@ -193,6 +194,7 @@ public object KaraDesk {
                 override fun onStart(owner: LifecycleOwner) {
                     val current = store ?: return
 
+                    current.events.flushSoon()
                     current.scope.launch {
                         current.resumeRealtime()
                         current.refreshAndAnnounce()
@@ -201,6 +203,7 @@ public object KaraDesk {
 
                 override fun onStop(owner: LifecycleOwner) {
                     store?.suspendRealtime()
+                    store?.events?.flushNow()
                 }
             })
         }
@@ -253,6 +256,40 @@ public object KaraDesk {
         val current = store ?: return
         current.logout()
         current.startQuietly()
+    }
+
+    /**
+     * Records something the user did in your app, like "Created project" or "Upgraded plan".
+     *
+     * ```kotlin
+     * KaraDesk.trackEvent("Placed order", mapOf("total" to 49.99, "items" to listOf(mapOf("sku" to "A-100", "quantity" to 2))))
+     * ```
+     *
+     * Events show on the person's profile in KaraDesk with how many times they did it and when. They're
+     * saved on the device and sent in batches, so you can track as often as you like: events tracked
+     * while offline are sent when the connection comes back. Events belong to whoever is signed in when
+     * you track them, or to the anonymous visitor until they sign in.
+     *
+     * @param name What happened, up to 120 characters. Past-tense names like "Invited teammate" read best.
+     * @param metadata Up to 20 details about the event. Values can be text (up to 500 characters),
+     * numbers, booleans, null, dates, lists and maps, nested up to 3 levels with up to 50 items in a
+     * list and 8 KB in all. Other values are skipped.
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun trackEvent(name: String, metadata: Map<String, Any?> = emptyMap()) {
+        val current = store ?: run {
+            Log.e(TAG, "Call KaraDesk.initialize before tracking events")
+            return
+        }
+        val trimmed = name.trim()
+
+        if (trimmed.isEmpty() || trimmed.length > 120) {
+            Log.e(TAG, "Event names must be 1 to 120 characters")
+            return
+        }
+
+        current.events.track(trimmed, EventMetadata.toJson(metadata))
     }
 
     /**

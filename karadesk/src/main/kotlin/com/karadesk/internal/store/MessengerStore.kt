@@ -21,10 +21,14 @@ import com.karadesk.internal.model.objects
 import com.karadesk.internal.net.ApiClient
 import com.karadesk.internal.net.ApiRequest
 import com.karadesk.internal.net.BootInput
+import com.karadesk.internal.net.NetworkMonitor
 import com.karadesk.internal.net.RealtimeConnection
 import com.karadesk.internal.net.RealtimeEvent
 import com.karadesk.internal.net.Requests
 import com.karadesk.internal.net.isExpiredSession
+import java.io.File
+import java.time.Duration
+import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -39,8 +43,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import java.time.Duration
-import java.time.Instant
 
 internal sealed interface Phase {
     data object Idle : Phase
@@ -60,6 +62,26 @@ internal class MessengerStore(
 ) {
     private val appContext = context.applicationContext
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    val events = EventQueue(
+        file = File(appContext.filesDir, "karadesk/events-$spaceId-$appId.json"),
+        scope = scope,
+        isOnline = { NetworkMonitor.isOnline.value },
+        sender = EventQueue.httpSender(client),
+    )
+
+    init {
+        scope.launch {
+            var wasOnline = NetworkMonitor.isOnline.value
+
+            NetworkMonitor.isOnline.collect { online ->
+                if (online && !wasOnline) {
+                    events.onReconnect()
+                }
+
+                wasOnline = online
+            }
+        }
+    }
 
     private val _phase = MutableStateFlow<Phase>(Phase.Idle)
     private val _boot = MutableStateFlow<BootResponse?>(null)
@@ -234,6 +256,7 @@ internal class MessengerStore(
             bootTask = null
             _boot.value = response
             _phase.value = Phase.Ready
+            events.setToken(response.token)
             connectRealtime(response.token)
             scope.launch { registerPushToken() }
             response
@@ -602,6 +625,8 @@ internal class MessengerStore(
     }
 
     private fun reset() {
+        events.setToken(null)
+        events.flushSoon()
         generation += 1
         bootTask?.cancel()
         bootTask = null
